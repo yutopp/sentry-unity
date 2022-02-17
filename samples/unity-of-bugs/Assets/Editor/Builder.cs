@@ -23,7 +23,8 @@ public class Builder
             scenes = new[] { "Assets/Scenes/1_Bugfarm.unity" },
             locationPathName = args["buildPath"],
             target = buildTarget,
-            options = BuildOptions.StrictMode,
+            // Prepare the project, without compiling it yet.
+            options = BuildOptions.StrictMode | BuildOptions.AcceptExternalModificationsToPlayer,
         };
 
         var report = BuildPipeline.BuildPlayer(buildPlayerOptions);
