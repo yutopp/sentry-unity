@@ -1,4 +1,5 @@
 using Sentry.Extensibility;
+using Sentry.Unity.Integrations;
 
 namespace Sentry.Unity.iOS
 {
@@ -19,11 +20,16 @@ namespace Sentry.Unity.iOS
                 options.EnableScopeSync = true;
                 options.CrashedLastRun = () =>
                 {
-                    var crashedLastRun = SentryCocoaBridgeProxy.CrashedLastRun();
+                    var crashedLastRun = SentryCocoaBridgeProxy.CrashedLastRun() == 1;
                     options.DiagnosticLogger?
                         .LogDebug("Native iOS SDK reported: 'crashedLastRun': '{0}'", crashedLastRun);
 
                     return crashedLastRun;
+                };
+                ApplicationAdapter.Instance.Quitting += () =>
+                {
+                    options.DiagnosticLogger?.LogDebug("Closing the sentry-cocoa SDK");
+                    SentryCocoaBridgeProxy.Close();
                 };
             }
         }

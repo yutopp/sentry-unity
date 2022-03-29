@@ -16,6 +16,8 @@ Plugins/Windows/Sentry/crashpad_handler.exe
 Plugins/Windows/Sentry/crashpad_handler.exe.meta
 Plugins/Windows/Sentry/sentry.dll
 Plugins/Windows/Sentry/sentry.dll.meta
+Plugins/Windows/Sentry/sentry.pdb
+Plugins/Windows/Sentry/sentry.pdb.meta
 Plugins/Windows/Sentry.meta
 Plugins/Android.meta
 Plugins/iOS.meta
@@ -311,8 +313,6 @@ Runtime/Sentry.xml
 Runtime/Sentry.xml.meta
 Runtime/SentryInitialization.cs
 Runtime/SentryInitialization.cs.meta
-Runtime/SentryUnityInfo.cs
-Runtime/SentryUnityInfo.cs.meta
 Samples~/unity-of-bugs/Scenes.meta
 Samples~/unity-of-bugs/Scripts.meta
 Samples~/unity-of-bugs/Scenes/1_Bugfarm.unity

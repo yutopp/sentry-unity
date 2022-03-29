@@ -2,14 +2,41 @@
 
 ## Unreleased
 
+### Fixes
+
+- Whitespaces no longer cause issues when uploading symbols for Windows native  ([#655](https://github.com/getsentry/sentry-unity/pull/655))
+
+## 0.13.0
+
+### Features
+
+- Windows - include sentry.dll & .pdb in debug symbol upload ([#641](https://github.com/getsentry/sentry-unity/pull/641))
+
+### Fixes
+
+- Resolved issue of the SDK accessing the same cache directory with multiple game instances running ([#643](https://github.com/getsentry/sentry-unity/pull/643))
+- Bump Sentry .NET SDK 3.15.0 ([#639](https://github.com/getsentry/sentry-unity/pull/639))
+  - [changelog](https://github.com/getsentry/sentry-dotnet/blob/3.15.0/CHANGELOG.md)
+  - [diff](https://github.com/getsentry/sentry-dotnet/compare/3.14.1...3.15.0)
+
+## 0.12.0
+
 ### Features
 
 - The SDK no longer depends on Unity's iOS module for non iOS builds ([#601](https://github.com/getsentry/sentry-unity/pull/601))
 - Capture Native Instruction Addrs for Exceptions ([#614](https://github.com/getsentry/sentry-unity/pull/614))
+- Update native SDK to v0.4.16 (pre-release) ([#615](https://github.com/getsentry/sentry-unity/pull/615))
+- Windows native support (64-bit)
+  - native crash handler ([#380](https://github.com/getsentry/sentry-unity/pull/380))
+  - configuration & log forwarding ([#577](https://github.com/getsentry/sentry-unity/pull/577))
+  - scope synchronization ([#546](https://github.com/getsentry/sentry-unity/pull/546))
+  - symbol upload while building through Unity ([#607](https://github.com/getsentry/sentry-unity/pull/607))
 
 ### Fixes
 
 - iOS builds no longer break when native support disabled or not available ([#592](https://github.com/getsentry/sentry-unity/pull/592))
+- Close sentry instance when quitting the app ([#608](https://github.com/getsentry/sentry-unity/pull/608))
+- iOS options.CrashedLastRun() reported an incorrect value ([#615](https://github.com/getsentry/sentry-unity/pull/615))
 
 ## 0.11.0
 

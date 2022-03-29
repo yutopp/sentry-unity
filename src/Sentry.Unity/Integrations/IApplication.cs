@@ -16,7 +16,10 @@ namespace Sentry.Unity.Integrations
         RuntimePlatform Platform { get; }
     }
 
-    internal sealed class ApplicationAdapter : IApplication
+    /// <summary>
+    /// Semi-internal class to be used by other Sentry.Unity assemblies
+    /// </summary>
+    public sealed class ApplicationAdapter : IApplication
     {
         public static readonly ApplicationAdapter Instance = new();
 

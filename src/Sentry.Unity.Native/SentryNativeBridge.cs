@@ -3,7 +3,6 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Sentry.Extensibility;
 using AOT;
-using System.Threading;
 using System.Text;
 
 namespace Sentry.Unity
@@ -20,11 +19,14 @@ namespace Sentry.Unity
     /// <see href="https://github.com/getsentry/sentry-native"/>
     public static class SentryNativeBridge
     {
+
+        public static bool CrashedLastRun;
+
         public static void Init(SentryUnityOptions options)
         {
             var cOptions = sentry_options_new();
 
-            // Note: DSN is not null because options.Validate() must have returned true for this to be called.
+            // Note: DSN is not null because options.IsValid() must have returned true for this to be called.
             sentry_options_set_dsn(cOptions, options.Dsn!);
 
             if (options.Release is not null)
@@ -52,19 +54,16 @@ namespace Sentry.Unity
             options.DiagnosticLogger?.LogDebug("Disabling native auto session tracking");
             sentry_options_set_auto_session_tracking(cOptions, 0);
 
-            if (options.CacheDirectoryPath is not null)
+            var dir = GetCacheDirectory(options);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var dir = Path.Combine(options.CacheDirectoryPath, "SentryNative");
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    options.DiagnosticLogger?.LogDebug("Setting CacheDirectoryPath on Windows: {0}", dir);
-                    sentry_options_set_database_pathw(cOptions, dir);
-                }
-                else
-                {
-                    options.DiagnosticLogger?.LogDebug("Setting CacheDirectoryPath: {0}", dir);
-                    sentry_options_set_database_path(cOptions, dir);
-                }
+                options.DiagnosticLogger?.LogDebug("Setting CacheDirectoryPath on Windows: {0}", dir);
+                sentry_options_set_database_pathw(cOptions, dir);
+            }
+            else
+            {
+                options.DiagnosticLogger?.LogDebug("Setting CacheDirectoryPath: {0}", dir);
+                sentry_options_set_database_path(cOptions, dir);
             }
 
             if (options.DiagnosticLogger is null)
@@ -80,6 +79,30 @@ namespace Sentry.Unity
             }
 
             sentry_init(cOptions);
+        }
+
+        public static void Close() => sentry_close();
+
+        // Call after native init() to check if the application has crashed in the previous run and clear the status.
+        // Because the file is removed, the result will change on subsequent calls so it must be cached for the current runtime.
+        internal static bool HandleCrashedLastRun(SentryUnityOptions options)
+        {
+            var result = sentry_get_crashed_last_run() == 1;
+            sentry_clear_crashed_last_run();
+            return result;
+        }
+
+        internal static string GetCacheDirectory(SentryUnityOptions options)
+        {
+            if (options.CacheDirectoryPath is null)
+            {
+                // same as the default of sentry-native
+                return Path.Combine(Directory.GetCurrentDirectory(), ".sentry-native");
+            }
+            else
+            {
+                return Path.Combine(options.CacheDirectoryPath, "SentryNative");
+            }
         }
 
         // libsentry.so
@@ -166,6 +189,15 @@ namespace Sentry.Unity
 
         [DllImport("sentry")]
         private static extern void sentry_init(IntPtr options);
+
+        [DllImport("sentry")]
+        private static extern int sentry_close();
+
+        [DllImport("sentry")]
+        private static extern int sentry_get_crashed_last_run();
+
+        [DllImport("sentry")]
+        private static extern int sentry_clear_crashed_last_run();
 
         /// <summary>
         /// Re-installs the sentry-native backend essentially retaking the signal handlers.

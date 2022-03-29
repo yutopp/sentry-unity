@@ -3,16 +3,9 @@ name: CI
 on:
   push:
     paths-ignore:
-      - 'CHANGELOG.md'
-  # fixme: temporary build for all branches - reusable-workflows have an issue in combination with `pull_request`
-  # trigger... see https://github.com/github/feedback/discussions/10679 for more details and status if it's fixed.
-  #   branches:
-  #     - main
-  #     - release/**
-
-  # pull_request:
-  #   paths-ignore:
-  #     - 'CHANGELOG.md'
+      - '**.md'
+      - '**.txt'
+  workflow_dispatch:  # e.g. to manually trigger on foreign PRs
 
 env:
   LOWEST_SUPPORTED_UNITY_VERSION: 2019
@@ -49,12 +42,6 @@ jobs:
   build:
     name: Build - ${{ matrix.unity-version }}
     runs-on: ubuntu-latest
-    # TODO add a "wait" step just before the artifacts are really needed - waiting for the SDK job to complete.
-    #      That way, we can start downloading the docker container while the native SDKs are being built.
-    #      There's no existing action to do that but a simple polling wait action could use the following API
-    #      https://docs.github.com/en/rest/reference/actions#list-jobs-for-a-workflow-run
-    #      https://api.github.com/repos/getsentry/sentry-unity/actions/runs/1816928507/jobs
-    needs: [android-sdk, ios-sdk, windows-sdk]
     strategy:
       fail-fast: false
       matrix:
@@ -82,28 +69,32 @@ jobs:
             temp/unity-packages/Library/ScriptAssemblies/*.TestRunner.*
           key: samples/unity-of-bugs|${{ steps.env.outputs.unityVersion }}-${{ hashFiles('samples/unity-of-bugs/Packages/packages-lock.json') }}
 
-      - uses: actions/download-artifact@v2
+      - name: Start the Unity docker container
+        run: docker run -td --name unity -v ${{ github.workspace }}:/sentry-unity --workdir /sentry-unity ghcr.io/getsentry/unity-docker:editor-ubuntu-${{ steps.env.outputs.unityVersion }}-main
+
+      - uses: vaind/download-artifact@3682b366b0e69c7108d5cf991efe7034ea0dd56d
         with:
           name: Android-sdk
           path: package-dev/Plugins/Android
+          wait-timeout: 3600
 
-      - uses: actions/download-artifact@v2
+      - uses: vaind/download-artifact@3682b366b0e69c7108d5cf991efe7034ea0dd56d
         with:
           name: Android-libraries
           path: modules/sentry-java/sentry-android-ndk/build/intermediates/merged_native_libs/release/out/lib
+          wait-timeout: 3600
 
-      - uses: actions/download-artifact@v2
+      - uses: vaind/download-artifact@3682b366b0e69c7108d5cf991efe7034ea0dd56d
         with:
           name: iOS-sdk
           path: package-dev/Plugins/iOS
+          wait-timeout: 3600
 
-      - uses: actions/download-artifact@v2
+      - uses: vaind/download-artifact@3682b366b0e69c7108d5cf991efe7034ea0dd56d
         with:
           name: Windows-sdk
           path: package-dev/Plugins/Windows
-
-      - name: Start the Unity the docker container
-        run: docker run -td --name unity -v ${{ github.workspace }}:/sentry-unity --workdir /sentry-unity ghcr.io/getsentry/unity-docker:editor-ubuntu-${{ steps.env.outputs.unityVersion }}-main
+          wait-timeout: 3600
 
       - name: Create Unity license config
         run: |
@@ -147,17 +138,10 @@ jobs:
           name: Test results (editmode)
           path: artifacts/test/editmode
 
-      # Add Sentry DSN via the editor integration so native support is included in the final game
-      - name: Configure Sentry via the Editor Window
-        run: docker exec unity dotnet msbuild /t:UnityConfigureSentryOptions /p:Configuration=Release /p:OutDir=other src/Sentry.Unity
-
-      # TODO: can we make unity only prepare the project, without compiling it, to unlock the unity license faster? iOS is already built like that.
-      #       This option should do it: https://docs.unity3d.com/ScriptReference/BuildOptions.AcceptExternalModificationsToPlayer.html
-      - name: Build Android Player with IL2CPP
-        run: docker exec unity dotnet msbuild /t:UnityBuildPlayerAndroidIL2CPP /p:Configuration=Release /p:OutDir=other src/Sentry.Unity
-
       - name: Build iOS Player
-        run: docker exec unity dotnet msbuild /t:UnityBuildPlayerIOS /p:Configuration=Release /p:OutDir=other src/Sentry.Unity
+        run: |
+          docker exec -e TEST_DSN=http://publickey@localhost:8000/12345 unity dotnet msbuild /t:UnityConfigureSentryOptions /p:Configuration=Release /p:OutDir=other src/Sentry.Unity
+          docker exec unity dotnet msbuild /t:UnityBuildPlayerIOS /p:Configuration=Release /p:OutDir=other src/Sentry.Unity
 
       - name: Prepare Sentry package for release
         shell: pwsh
@@ -169,13 +153,6 @@ jobs:
         with:
           name: Build output
           path: artifacts/build
-
-      - name: Upload Android test app for smoke test.
-        uses: actions/upload-artifact@v2
-        with:
-          name: testapp-android-${{ matrix.unity-version }}
-          path: samples/artifacts/builds/Android/IL2CPP_Player.apk
-          if-no-files-found: error
 
       - name: Upload Xcode project for smoke test.
         uses: actions/upload-artifact@v2
@@ -194,6 +171,20 @@ jobs:
           path: |
             package-release.zip
             modules/sentry-java/sentry-android-ndk/build/intermediates/merged_native_libs/release/out/lib/*
+
+      # TODO: can we make unity only prepare the project, without compiling it, to unlock the unity license faster? iOS is already built like that.
+      #       This option should do it: https://docs.unity3d.com/ScriptReference/BuildOptions.AcceptExternalModificationsToPlayer.html
+      - name: Build Android Player with IL2CPP
+        run: |
+          docker exec -e TEST_DSN=http://publickey@10.0.2.2:8000/12345 unity dotnet msbuild /t:UnityConfigureSentryOptions /p:Configuration=Release /p:OutDir=other src/Sentry.Unity
+          docker exec unity dotnet msbuild /t:UnityBuildPlayerAndroidIL2CPP /p:Configuration=Release /p:OutDir=other src/Sentry.Unity
+
+      - name: Upload Android test app for smoke test.
+        uses: actions/upload-artifact@v2
+        with:
+          name: testapp-android-${{ matrix.unity-version }}
+          path: samples/artifacts/builds/Android/IL2CPP_Player.apk
+          if-no-files-found: error
 
       - name: Upload Android Build
         uses: actions/upload-artifact@v2
@@ -225,7 +216,6 @@ jobs:
         run: ./test/Scripts.Tests/test-pack-contents.ps1
 
   windows-smoke-test:
-    needs: [build]
     name: Run Windows Unity ${{ matrix.unity-version }} Smoke Test
     runs-on: windows-latest
     strategy:
@@ -245,12 +235,6 @@ jobs:
       - name: Load env
         id: env
         run: echo "::set-output name=unityVersion::$(./scripts/ci-env.ps1 "unity${{ matrix.unity-version }}")"
-
-      - name: Download UPM package
-        uses: actions/download-artifact@v2
-        with:
-          # Artifact name is the commit sha. Which is what craft uses to find the relevant artifact.
-          name: ${{ github.sha }}
 
       # Caching the whole Unity installation would overflow the 10 GiB limit repositories have but we can cache the Hub
       # to achieve some speedup here at a low size cost.
@@ -283,6 +267,13 @@ jobs:
 
       - name: Build Standalone Player without Sentry SDK
         run: ./test/Scripts.Integration.Test/integration-build-project.ps1 "${{ env.UNITY_PATH }}"
+
+      - name: Download UPM package
+        uses: vaind/download-artifact@3682b366b0e69c7108d5cf991efe7034ea0dd56d
+        with:
+          # Artifact name is the commit sha. Which is what craft uses to find the relevant artifact.
+          name: ${{ github.sha }}
+          wait-timeout: 3600
 
       - name: Add Sentry to test project
         run: ./test/Scripts.Integration.Test/integration-update-sentry.ps1 "${{ env.UNITY_PATH }}"
@@ -322,33 +313,22 @@ jobs:
           name: testapp-android-${{ matrix.unity-version }}
           path: samples/artifacts/builds/Android
 
-      - name: Select AVD target
-        id: select-avd-target
-        #api-level 30 image is only available with google services.
-        run: |
-          $avdTarget = "default"
-          If (${{ matrix.api-level }} -eq 30)
-          {
-            $avdTarget = "google_apis"
-          }
-          Write-Host "steps.select-avd-target.outputs.target is $avdTarget"
-          echo "::set-output name=target::$avdTarget"
-
       - name: Android emulator setup + Smoke test
         id: smoke-test
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 30
         uses: reactivecircus/android-emulator-runner@2b2ebf2e518e38a17180117fc2b677006db27330
         with:
           api-level: ${{ matrix.api-level }}
-          target: ${{ steps.select-avd-target.outputs.target }}
+          #api-level 30 image is only available with google services.
+          target: ${{ matrix.api-level == 30 && 'google_apis' || 'default' }}
           force-avd-creation: false
           ram-size: 2048M
           arch: x86
           cores: 2
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
-          script: sudo pwsh ./scripts/smoke-test-droid.ps1
+          script: sudo pwsh ./scripts/smoke-test-droid.ps1 -IsCI
 
       - name: Kill emulator if AVD failed.
         if: ${{ steps.smoke-test.outputs.smoke-status != 'Completed' }}
@@ -360,26 +340,28 @@ jobs:
       - name: Android emulator setup + Smoke test (Retry)
         id: smoke-test-retry
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 30
         # Retry the tests if the previous fail happened on the emulator startup.
         if: ${{ steps.smoke-test.outputs.smoke-status != 'Completed' }}
         uses: reactivecircus/android-emulator-runner@2b2ebf2e518e38a17180117fc2b677006db27330
         with:
           api-level: ${{ matrix.api-level }}
-          target: ${{ steps.select-avd-target.outputs.target }}
-          ram-size: 2048M
-          cores: 2
-          arch: x86
+          target: ${{ matrix.api-level == 30 && 'google_apis' || 'default' }}
           force-avd-creation: false
+          ram-size: 2048M
+          arch: x86
+          cores: 2
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
-          script: sudo pwsh ./scripts/smoke-test-droid.ps1
+          script: sudo pwsh ./scripts/smoke-test-droid.ps1 -IsCI
 
       - name: Throw error if Smoke test failed
-        # We want to throw an error if the smoke test failed.
-        # We will ignore flaky errors from the emulator setup.
-        if: ${{ (steps.smoke-test.outcome != 'success' && steps.smoke-test.outputs.smoke-status == 'Completed') || (steps.smoke-test-retry.outcome != 'success' && steps.smoke-test-retry.outputs.smoke-status == 'Completed') }}
-        run: exit -1
+        run: |
+          $mainResult = '${{ steps.smoke-test.outputs.smoke-status }}'
+          $retryResult = '${{ steps.smoke-test-retry.outputs.smoke-status }}'
+          if (!($mainResult -eq 'Completed') -and !($mainResult -eq 'Flaky' -and $retryResult -eq 'Completed')) {
+            Write-Error "Test: $mainResult; Retry: $retryResult"
+          }
 
       - name: Upload screenshot if smoke test failed
         if: ${{ failure() }}
@@ -389,7 +371,6 @@ jobs:
           path: samples/artifacts/builds/Android/screen.png
 
   ios-smoke-test-build:
-    needs: [build]
     name: Build iOS Unity ${{ matrix.unity-version }} Smoke Test
     runs-on: macos-latest
     strategy:
@@ -401,10 +382,11 @@ jobs:
         uses: actions/checkout@v2.3.3
 
       - name: Download XCode app artifact
-        uses: actions/download-artifact@v2
+        uses: vaind/download-artifact@3682b366b0e69c7108d5cf991efe7034ea0dd56d
         with:
           name: testapp-ios-project-${{ matrix.unity-version }}
           path: samples/artifacts/builds/iOS/Xcode
+          wait-timeout: 3600
 
       - name: Build iOS package
         shell: pwsh
