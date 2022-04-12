@@ -2,9 +2,21 @@
 
 ## Unreleased
 
+### Features
+
+- Adding override for Sentry CLI URL ([#666](https://github.com/getsentry/sentry-unity/pull/666))
+- Capture Native Instruction Addrs for Exceptions ([#683](https://github.com/getsentry/sentry-unity/pull/683))
+
 ### Fixes
 
 - Whitespaces no longer cause issues when uploading symbols for Windows native  ([#655](https://github.com/getsentry/sentry-unity/pull/655))
+- AndroidManifest update removes previous `io.sentry` entries ([#652](https://github.com/getsentry/sentry-unity/pull/652))
+- Bump Sentry .NET SDK 3.16.0 ([#678](https://github.com/getsentry/sentry-unity/pull/678))
+  - [changelog 3.16.0](https://github.com/getsentry/sentry-dotnet/blob/3.16.0/CHANGELOG.md)
+  - [diff](https://github.com/getsentry/sentry-dotnet/compare/3.14.1...3.16.0)
+- Bump Sentry Java SDK to v6.0.0-alpha.4 ([#653](https://github.com/getsentry/sentry-unity/pull/653))
+  - [changelog](https://github.com/getsentry/sentry-java/blob/6.0.0-alpha.4/CHANGELOG.md)
+  - [diff](https://github.com/getsentry/sentry-java/compare/5.5.0...6.0.0-alpha.4)
 
 ## 0.13.0
 
@@ -24,7 +36,6 @@
 ### Features
 
 - The SDK no longer depends on Unity's iOS module for non iOS builds ([#601](https://github.com/getsentry/sentry-unity/pull/601))
-- Capture Native Instruction Addrs for Exceptions ([#614](https://github.com/getsentry/sentry-unity/pull/614))
 - Update native SDK to v0.4.16 (pre-release) ([#615](https://github.com/getsentry/sentry-unity/pull/615))
 - Windows native support (64-bit)
   - native crash handler ([#380](https://github.com/getsentry/sentry-unity/pull/380))

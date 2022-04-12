@@ -25,7 +25,7 @@ namespace Sentry.Unity.Editor.Native
             {
                 if (PlayerSettings.GetScriptingBackend(EditorUserBuildSettings.selectedBuildTargetGroup) != ScriptingImplementation.IL2CPP)
                 {
-                    logger.LogWarning("Failed to enable Native support - only availabile with IL2CPP scripting backend.");
+                    logger.LogWarning("Failed to enable Native support - only available with IL2CPP scripting backend.");
                     return;
                 }
 
@@ -113,9 +113,9 @@ namespace Sentry.Unity.Editor.Native
                 }
             };
 
-            if (cliOptions.Url != null)
+            if (!string.IsNullOrEmpty(cliOptions.UrlOverride))
             {
-                process.StartInfo.EnvironmentVariables["SENTRY_URL"] = cliOptions.Url;
+                process.StartInfo.EnvironmentVariables["SENTRY_URL"] = cliOptions.UrlOverride;
             }
 
             process.StartInfo.EnvironmentVariables["SENTRY_ORG"] = cliOptions.Organization;
