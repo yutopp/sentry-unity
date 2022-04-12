@@ -278,8 +278,8 @@ namespace Sentry.Unity
 
     internal class NativeStackTrace
     {
-        public IntPtr[] Frames = new IntPtr[0];
-        public string? ImageUUID;
+        public IntPtr[] Frames = Array.Empty<IntPtr>();
+        public string? ImageUuid;
         public string? ImageName;
     }
 
@@ -307,7 +307,7 @@ namespace Sentry.Unity
                     // images that do not have a `image_addr` but are rather used with "rel:N" AddressMode.
                     Type = "wasm",
                     CodeFile = nativeStackTrace.ImageName,
-                    DebugId = nativeStackTrace.ImageUUID,
+                    DebugId = nativeStackTrace.ImageUuid,
                 });
                 sentryEvent.DebugImages = debugImages;
                 var addrMode = String.Format("rel:{0}", imageIdx);
@@ -368,7 +368,7 @@ namespace Sentry.Unity
             return new NativeStackTrace
             {
                 Frames = frames,
-                ImageUUID = imageUUID,
+                ImageUuid = imageUUID,
                 ImageName = imageName,
             };
         }
