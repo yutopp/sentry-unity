@@ -202,6 +202,9 @@ jobs:
           name: ${{ github.sha }}
           wait-timeout: 3600
 
+      - name: Extract UPM package
+        run: ./test/Scripts.Integration.Test/integration-extract-package.ps1
+
       - name: Build ${{ matrix.platform }} Player
         run: |
           $testDsnServer = If ("${{ matrix.platform }}" -eq "Android") {"10.0.2.2"} Else {"127.0.0.1"}
@@ -296,6 +299,9 @@ jobs:
           # Artifact name is the commit sha. Which is what craft uses to find the relevant artifact.
           name: ${{ github.sha }}
           wait-timeout: 3600
+
+      - name: Extract UPM package
+        run: ./test/Scripts.Integration.Test/integration-extract-package.ps1
 
       - name: Add Sentry to test project
         run: ./test/Scripts.Integration.Test/integration-update-sentry.ps1 "${{ env.UNITY_PATH }}"
